@@ -54,6 +54,10 @@ class Alarm(object):
     def gym_alert(self, pokegym_info):
         raise NotImplementedError("This is an abstract method.")
 
+    # Trigger an alert based on Raid info
+    def raid_alert(self, pokeraid_info):
+        raise NotImplementedError('This is an abstract method.')
+
     # Return a version of the string with the correct substitutions made
     @staticmethod
     def replace(string, pkinfo):

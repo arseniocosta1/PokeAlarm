@@ -126,6 +126,20 @@ def load_gym_section(settings):
     return gym
 
 
+def load_raid_section(settings):
+    log.info("Setting Raid Filters...")
+
+    default_true = {"min_level": 1, "max_level": 5},
+
+    raid = {
+      "enabled": bool(parse_boolean(settings.pop('enabled', None)) or False),
+      "filters": create_multi_filter('Raid --> filters', RaidFilter,
+                                     settings.pop('filters', "False"), default_true)
+    }
+
+    return raid
+
+
 class Filter(object):
 
     def __init__(self, settings, default, location):
@@ -359,6 +373,29 @@ class PokemonFilter(Filter):
                 sys.exit(1)
         return list_
 
+
+# Raid Filter is used to determine when Pokestop notifications will be triggered.
+class RaidFilter(Filter):
+
+    def __init__(self, settings, default, location):
+        self.min_level = float(settings.pop('min_level', None) or default['min_level'])
+        self.max_level = float(settings.pop('max_level', None) or default['max_level'])
+
+        reject_leftover_parameters(settings, "Raid filter in {}".format(location))
+
+    # Checks the Level against this filter
+    def check_level(self, level):
+        return self.min_level <= level <= self.max_level
+
+    # Print this filter
+    def to_string(self):
+        return "Level: {} to {}, ".format(self.min_level, self.max_level)
+
+        # Convert this filter to a dict
+    def to_dict(self):
+        return {
+          "min_level": self.min_level, "max_level": self.max_level
+        }
 
 # Pokestop Filter is used to determine when Pokestop notifications will be triggered.
 class PokestopFilter(Filter):

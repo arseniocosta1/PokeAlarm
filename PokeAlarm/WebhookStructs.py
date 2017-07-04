@@ -28,6 +28,8 @@ class RocketMap:
                 return RocketMap.pokestop(data.get('message'))
             elif kind == 'gym' or kind == 'gym_details':
                 return RocketMap.gym(data.get('message'))
+            elif kind == 'raid':
+                return RocketMap.raid(data.get('message'))
             elif kind in ['captcha', 'scheduler']:  # Unsupported Webhooks
                 log.debug("{} webhook received. This webhooks is not yet supported at this time.".format({kind}))
             else:
@@ -131,6 +133,25 @@ class RocketMap:
         gym['gmaps'] = get_gmaps_link(gym['lat'], gym['lng'])
         gym['applemaps'] = get_applemaps_link(gym['lat'], gym['lng'])
         return gym
+
+    @staticmethod
+    def raid(data):
+        log.debug("Converting to raid: \n {}".format(data))
+        raid = {
+          'type': "raid",
+          'id': data.get('gym_id'),
+          'pkmn_id': int(data['pokemon_id']),
+          'level': int(data['level']),
+          'lat': float(data['latitude']),
+          'expire_time':  datetime.utcfromtimestamp(data['end']),
+          'lng': float(data['longitude']),
+          'cp': int(data['cp'])
+        }
+
+        raid['gmaps'] = get_gmaps_link(raid['lat'], raid['lng'])
+        raid['applemaps'] = get_applemaps_link(raid['lat'], raid['lng'])
+
+        return raid
 
 
 # Ensure that the value isn't None but replacing with a default

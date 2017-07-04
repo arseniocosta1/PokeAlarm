@@ -13,7 +13,8 @@ import gipc
 import googlemaps
 # Local Imports
 from . import config
-from Filters import Geofence, load_pokemon_section, load_pokestop_section, load_gym_section
+from Filters import Geofence, load_pokemon_section, load_pokestop_section, load_gym_section, \
+    load_raid_section
 from Utils import get_cardinal_dir, get_dist_as_str, get_earth_dist, get_path, get_time_as_str, \
     require_and_remove_key, parse_boolean, contains_arg
 log = logging.getLogger('Manager')
@@ -48,6 +49,7 @@ class Manager(object):
 
         # Load and Setup the Pokemon Filters
         self.__pokemon_settings, self.__pokestop_settings, self.__gym_settings = {}, {}, {}
+        self.__raid_settings = {},
         self.__pokemon_hist, self.__pokestop_hist, self.__gym_hist = {}, {}, {}
         self.__gym_info = {}
         self.load_filter_file(get_path(filter_file))
@@ -100,6 +102,10 @@ class Manager(object):
             # Load in the Gym Section
             self.__gym_settings = load_gym_section(
                 require_and_remove_key('gyms', filters, "Filters file."))
+
+            # Load in the Raid Section
+            self.__raid_settings = load_raid_section(
+                require_and_remove_key('raids', filters, "Filters file."))
 
             return
 
@@ -281,6 +287,8 @@ class Manager(object):
                     self.process_pokestop(obj)
                 elif kind == "gym":
                     self.process_gym(obj)
+                elif kind == "raid":
+                    self.process_raid(obj)
                 else:
                     log.error("!!! Manager does not support {} objects!".format(kind))
                 log.debug("Finished processing object {} with id {}".format(obj['type'], obj['id']))
@@ -739,6 +747,79 @@ class Manager(object):
 
         for thread in threads:
             thread.join()
+
+    def process_raid(self, raid):
+        if self.__raid_settings['enabled'] is False:
+          log.debug("Raid ignored: notifications are disabled.")
+          return
+
+        # Extract some basic information
+        gym_id = raid['id']
+        pkmn_id = raid['pkmn_id']
+        name = self.__pokemon_name[pkmn_id]
+
+        # Get some more info out used to check filters
+        level = raid['level']
+        lat, lng = raid['lat'], raid['lng']
+        dist = get_earth_dist([lat, lng], self.__latlng)
+
+        filters = self.__raid_settings['filters']
+        passed = False
+
+        for filt_ct in range(len(filters)):
+          filt = filters[filt_ct]
+          # Check the level
+          if filt.check_level(level) is False:
+              if self.__quiet is False:
+                       log.info("Raid Level ({}) against ({}) rejected: not in range {} to {} - (F #{})".format(
+                         level, name, filt.min_level, filt.max_level, filt_ct))
+              continue
+
+
+          # Nothing left to check, so it must have passed
+          passed = True
+          log.debug("Pokstop passed filter #{}".format(filt_ct))
+          break
+
+        if not passed:
+          return
+
+        # if not filter.check_level(level):
+        #     if self.__quiet is False:
+        #         log.info("Raid Level ({}) against ({}) rejected: not in range {} to {} - (F #{})".format(
+        #           level, name, filter.min_level, filter.max_level, "level"))
+        #     return
+        #
+
+
+
+        #TODO: geofence
+
+        time_str = get_time_as_str(raid['expire_time'], self.__timezone)
+        raid.update({
+          "pkmn_id": pkmn_id,
+          'pkmn': name,
+          'time_left': time_str[0],
+          '12h_time': time_str[1],
+          '24h_time': time_str[2],
+          "dist": get_dist_as_str(dist),
+          'dir': get_cardinal_dir([lat, lng], self.__latlng),
+        })
+
+        self.add_optional_travel_arguments(raid)
+
+        if self.__quiet is False:
+            log.info("Raid ({}) notification has been triggered!".format(gym_id))
+
+        threads = []
+        # Spawn notifications in threads so they can work in background
+        for alarm in self.__alarms:
+            threads.append(gevent.spawn(alarm.raid_alert, raid))
+            gevent.sleep(0)  # explict context yield
+
+        for thread in threads:
+            thread.join()
+
 
     # Check to see if a notification is within the given range
     def check_geofences(self, name, lat, lng):

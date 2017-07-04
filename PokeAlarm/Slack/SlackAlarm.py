@@ -42,6 +42,14 @@ class SlackAlarm(Alarm):
             'title': "A Team <old_team> gym has fallen!",
             'url': "<gmaps>",
             'body': "It is now controlled by <new_team>."
+        },
+
+        'raid': {
+            'username': "<pkmn> Raid",
+            'icon_url': "https://raw.githubusercontent.com/kvangent/PokeAlarm/master/icons/<pkmn_id>.png",
+            'title': "Level <level> raid VS <pkmn>",
+            'url': "<gmaps>",
+            'body': "\nCp: <cp>\nEnds at: <24h_time> (<time_left>).",
         }
     }
 
@@ -63,6 +71,7 @@ class SlackAlarm(Alarm):
         self.__pokemon = self.create_alert_settings(settings.pop('pokemon', {}), self._defaults['pokemon'])
         self.__pokestop = self.create_alert_settings(settings.pop('pokestop', {}), self._defaults['pokestop'])
         self.__gym = self.create_alert_settings(settings.pop('gym', {}), self._defaults['gym'])
+        self.__raid = self.create_alert_settings(settings.pop('raid', {}), self._defaults['raid'])
 
         # Warn user about leftover parameters
         reject_leftover_parameters(settings, "'Alarm level in Slack alarm.")
@@ -98,7 +107,7 @@ class SlackAlarm(Alarm):
     def send_alert(self, alert, info):
         attachments = [{
             'fallback': 'Map_Preview',
-            'image_url': replace( alert['map'], {'lat': info['lat'], 'lng':info['lng']})
+            'image_url': replace(alert['map'], {'lat': info['lat'], 'lng':info['lng']})
         }] if alert['map'] is not None else None
         self.send_message(
             channel=replace(alert['channel'], info),
@@ -120,6 +129,10 @@ class SlackAlarm(Alarm):
     # Trigger an alert based on Pokestop info
     def gym_alert(self, gym_info):
         self.send_alert(self.__gym, gym_info)
+
+    # Trigger an alert based on Raid info
+    def raid_alert(self, raid_info):
+        self.send_alert(self.__raid, raid_info)
 
     # Get a list of channels from Slack to help
     def update_channels(self):
