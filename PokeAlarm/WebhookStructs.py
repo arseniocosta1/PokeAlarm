@@ -136,16 +136,19 @@ class RocketMap:
 
     @staticmethod
     def raid(data):
-        log.debug("Converting to raid: \n {}".format(data))
+        log.info("Converting to raid: \n {}".format(data))
         raid = {
-          'type': "raid",
-          'id': data.get('gym_id'),
-          'pkmn_id': int(data['pokemon_id']),
-          'level': int(data['level']),
-          'lat': float(data['latitude']),
-          'expire_time':  datetime.utcfromtimestamp(data['end']),
-          'lng': float(data['longitude']),
-          'cp': int(data['cp'])
+            'type': "raid",
+            'spawn': int(data['spawn']),
+            'id': data.get('gym_id'),
+            'pkmn_id': check_for_none(int, data['pokemon_id'], '?'),
+            'level': int(data['level']),
+            'lat': float(data['latitude']),
+            'expire_time':  datetime.utcfromtimestamp(data['end']/1000),
+            'lng': float(data['longitude']),
+            'cp': check_for_none(int, data['cp'], '?'),
+            'move_1': check_for_none(int, data['move_1'], '?'),
+            'move_2': check_for_none(int, data['move_2'], '?')
         }
 
         raid['gmaps'] = get_gmaps_link(raid['lat'], raid['lng'])

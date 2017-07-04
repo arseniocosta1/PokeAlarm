@@ -756,6 +756,11 @@ class Manager(object):
         # Extract some basic information
         gym_id = raid['id']
         pkmn_id = raid['pkmn_id']
+
+        if pkmn_id is '?':
+            log.info("Raid ignored: no pokemon info")
+            return
+
         name = self.__pokemon_name[pkmn_id]
 
         # Get some more info out used to check filters
